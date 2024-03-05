@@ -38,7 +38,6 @@ import (
 type Tronity struct {
 	*embed
 	*request.Helper
-	log   *util.Logger
 	oc    *oauth2.Config
 	vid   string
 	bulkG func() (tronity.Bulk, error)
@@ -83,7 +82,6 @@ func NewTronityFromConfig(other map[string]interface{}) (api.Vehicle, error) {
 	}
 
 	v := &Tronity{
-		log:    log,
 		embed:  &cc.embed,
 		Helper: request.NewHelper(log),
 		oc:     oc,
@@ -152,15 +150,12 @@ func (v *Tronity) RefreshToken(_ *oauth2.Token) (*oauth2.Token, error) {
 		GrantType:    "app",
 	}
 
-	req, err := request.New(http.MethodPost, v.oc.Endpoint.TokenURL, request.MarshalJSON(data), request.JSONEncoding)
-	if err != nil {
-		return nil, err
-	}
+	req, _ := request.New(http.MethodPost, v.oc.Endpoint.TokenURL, request.MarshalJSON(data), request.JSONEncoding)
 
-	var token oauth2.Token
-	err = request.NewHelper(v.log).DoJSON(req, &token)
+	var token oauth.Token
+	err := v.DoJSON(req, &token)
 
-	return &token, err
+	return (*oauth2.Token)(&token), err
 }
 
 // vehicles implements the vehicles api
