@@ -413,10 +413,14 @@ func (c *EEBus) writeLoadControlLimitsVASVW(evEntity spineapi.EntityRemoteInterf
 	}
 
 	for index, item := range limits {
-		limits[index].IsActive = item.Value >= minLimits[index]
+		// if the limit is equal or bigger than the min allowed, then the recommendation limit is active, otherwise it is not
+		limits[index].IsActive = false
+		if index < len(minLimits) {
+			limits[index].IsActive = item.Value >= minLimits[index]
+		}
 	}
 
-	// set overload protection limits
+	// set recommendation limits
 	if _, err := c.uc.OscEV.WriteLoadControlLimits(evEntity, limits, nil); err != nil {
 		c.log.ERROR.Println("!! OscEV.WriteLoadControlLimits:", err)
 		return false
@@ -581,11 +585,11 @@ func (c *EEBus) Identify() (string, error) {
 
 var _ api.Battery = (*EEBus)(nil)
 
-// Soc implements the api.Vehicle interface
+// Soc implements the api.Battery interface
 func (c *EEBus) Soc() (float64, error) {
 	evEntity, ok := c.isEvConnected()
 	if !ok {
-		return 0, nil
+		return 0, api.ErrNotAvailable
 	}
 
 	if !c.uc.EvSoc.IsScenarioAvailableAtEntity(evEntity, 1) {
