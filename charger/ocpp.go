@@ -160,12 +160,14 @@ func NewOCPP(id string, connector int, idtag string,
 	}
 
 	c := &OCPP{
-		log:              log,
-		conn:             conn,
-		idtag:            idtag,
-		remoteStart:      remoteStart,
-		chargingRateUnit: types.ChargingRateUnitType(chargingRateUnit),
-		timeout:          timeout,
+		log:         log,
+		conn:        conn,
+		idtag:       idtag,
+		remoteStart: remoteStart,
+
+		chargingRateUnit:        types.ChargingRateUnitType(chargingRateUnit),
+		hasRemoteTriggerFeature: true, // assume remote trigger feature is available
+		timeout:                 timeout,
 	}
 
 	c.log.DEBUG.Printf("waiting for chargepoint: %v", connectTimeout)
@@ -179,12 +181,14 @@ func NewOCPP(id string, connector int, idtag string,
 	// fix timing issue in EVBox when switching OCPP protocol version
 	time.Sleep(time.Second)
 
-	var rc = make(chan error, 1)
+	if err := ocpp.Instance().ChangeAvailabilityRequest(cp.ID(), 0, core.AvailabilityTypeOperative); err != nil {
+		c.log.DEBUG.Printf("failed configuring availability: %v", err)
+	}
 
-	meterValuesSampledData := ""
+	var meterValuesSampledData string
 	meterValuesSampledDataMaxLength := len(strings.Split(desiredMeasurands, ","))
 
-	c.hasRemoteTriggerFeature = true // assume remote trigger feature is available
+	rc := make(chan error, 1)
 
 	err = ocpp.Instance().GetConfiguration(cp.ID(), func(resp *core.GetConfigurationConfirmation, err error) {
 		if err == nil {
@@ -269,6 +273,10 @@ func NewOCPP(id string, connector int, idtag string,
 
 	// see who's there
 	if c.hasRemoteTriggerFeature {
+		if err := conn.TriggerMessageRequest(core.StatusNotificationFeatureName); err != nil {
+			c.log.DEBUG.Printf("failed triggering StatusNotification: %v", err)
+		}
+
 		if err := ocpp.Instance().TriggerMessageRequest(cp.ID(), core.BootNotificationFeatureName); err == nil {
 			select {
 			case <-time.After(timeout):
@@ -278,6 +286,8 @@ func NewOCPP(id string, connector int, idtag string,
 					c.bootNotification = res
 				}
 			}
+		} else {
+			c.log.DEBUG.Printf("failed triggering BootNotification: %v", err)
 		}
 	}
 
@@ -425,9 +435,20 @@ var _ api.StatusReasoner = (*OCPP)(nil)
 
 func (c *OCPP) StatusReason() (api.Reason, error) {
 	var res api.Reason
-	if c.conn.NeedsAuthentication() {
-		res = api.ReasonWaitingForAuthorization
+
+	s, err := c.conn.Status()
+	if err != nil {
+		return res, err
 	}
+
+	switch {
+	case c.conn.NeedsAuthentication():
+		res = api.ReasonWaitingForAuthorization
+
+	case s == core.ChargePointStatusFinishing:
+		res = api.ReasonDisconnectRequired
+	}
+
 	return res, nil
 }
 
