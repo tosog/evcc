@@ -1,20 +1,27 @@
 package ocpp
 
 import (
+	"errors"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/evcc-io/evcc/api"
+	"github.com/lorenzodonini/ocpp-go/ocpp"
 	"github.com/lorenzodonini/ocpp-go/ocpp1.6/types"
+	"github.com/lorenzodonini/ocpp-go/ocppj"
 )
 
-// Wait waits for a CP roundtrip with timeout
-func Wait(err error, rc chan error, timeout time.Duration) error {
+// wait waits for a CP roundtrip with timeout
+func wait(err error, rc chan error) error {
 	if err == nil {
 		select {
 		case err = <-rc:
 			close(rc)
-		case <-time.After(timeout):
+		}
+
+		oe := new(ocpp.Error)
+		if errors.As(err, &oe) && oe.Code == ocppj.GenericError {
 			err = api.ErrTimeout
 		}
 	}
@@ -31,5 +38,12 @@ func sortByAge(values []types.MeterValue) []types.MeterValue {
 			bt = b.Timestamp.Time
 		}
 		return at.Compare(bt)
+	})
+}
+
+// hasProperty checks if comma-separated string contains given string ignoring white spaces
+func hasProperty(props, prop string) bool {
+	return slices.ContainsFunc(strings.Split(props, ","), func(s string) bool {
+		return strings.HasPrefix(strings.ReplaceAll(s, " ", ""), prop)
 	})
 }

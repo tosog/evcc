@@ -47,6 +47,7 @@
     "prettier-plugin-toml": "^2.0.1",
     "rollup-plugin-visualizer": "^5.8.3",
     "smoothscroll-polyfill": "^0.4.4",
+    "snarkdown": "^2.0.0",
     "typescript": "^5.2.2",
     "vite": "^5.1.1",
     "vite-plugin-toml": "^0.7.0",
@@ -54,7 +55,7 @@
     "vue": "^3.2.29",
     "vue-eslint-parser": "^9.1.0",
     "vue-hot-reload-api": "^2.3.4",
-    "vue-i18n": "^9.2.2",
+    "vue-i18n": "^10.0.1",
     "vue-router": "^4.0.12",
     "wait-on": "^8.0.0"
   },
