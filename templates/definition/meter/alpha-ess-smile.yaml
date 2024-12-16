@@ -21,12 +21,12 @@ params:
   - name: capacity
     advanced: true
   - name: minsoc
-    default: 10
-    type: number
+    default: 20
+    type: int
     advanced: true
   - name: maxsoc
-    default: 100
-    type: number
+    default: 95
+    type: int
     advanced: true
 render: |
   type: custom
@@ -148,7 +148,6 @@ render: |
       type: holding
       decode: uint16
     scale: 0.1
-  capacity: {{ .capacity }} # kWh
   batterymode:
     source: switch
     switch:
@@ -207,4 +206,5 @@ render: |
               address: 2133 # 0x855 Charge Cut Soc
               type: writemultiple
               decode: uint16
+  capacity: {{ .capacity }} # kWh
   {{- end }}
